@@ -143,6 +143,27 @@
   .pc-run { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:12px; }
   .pc-run-label { color:var(--text-2); font-weight:600; }
   .pc-run-val { color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+  /* 4차 A/B 비교 블록 */
+  .pc-ab { margin-top:13px; border-top:1px dashed var(--border); padding-top:11px; }
+  .pc-ab-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; font-size:10.5px; font-weight:800; color:var(--text-3); letter-spacing:0.3px; margin-bottom:9px; }
+  .ab-leg { font-weight:600; color:var(--text-2); display:flex; align-items:center; gap:4px; }
+  .ab-sw { width:9px; height:9px; border-radius:2px; display:inline-block; margin:0 3px 0 7px; }
+  .ab-sw.fa, .ab-f.fa { background:#2A78D6; }
+  .ab-sw.fb, .ab-f.fb { background:#8A8A8A; }
+  .pc-ab-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:11px; }
+  .abk { background:var(--grey-bg); border-radius:9px; padding:8px 9px; }
+  .abk.hero { background:var(--cbg); }
+  .abk-l { font-size:9.5px; color:var(--text-3); margin-bottom:3px; line-height:1.25; }
+  .abk-v { font-size:17px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; }
+  .abk.hero .abk-v { color:var(--c); }
+  .abk-v span { font-size:11px; color:var(--text-3); font-weight:600; }
+  .abk-s { font-size:9.5px; color:var(--text-3); margin-top:2px; }
+  .ab-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .ab-rl { font-size:10.5px; color:var(--text-2); width:46px; flex-shrink:0; }
+  .ab-bg { flex:1; display:flex; flex-direction:column; gap:3px; }
+  .ab-b { display:flex; align-items:center; gap:6px; }
+  .ab-f { height:9px; border-radius:3px; display:block; min-width:2px; }
+  .ab-b b { font-size:10px; color:var(--text-2); font-weight:700; font-variant-numeric:tabular-nums; }
   /* 담당자 필터 탭 */
   .owner-tabs { display:flex; gap:6px; margin:2px 0 16px; flex-wrap:wrap; }
   .owner-tab { background:#fff; border:1px solid var(--border); padding:6px 13px; border-radius:99px; font-size:12.5px; font-weight:600; color:var(--text-2); cursor:pointer; font-family:inherit; transition:.15s; display:inline-flex; align-items:center; gap:6px; }
@@ -776,6 +797,36 @@ function renderDetail(){
     const costHtml = (pcost||scost||gcost)
       ? `<div class="pc-cost"><span class="pc-cost-l">💸 마케팅 비용</span><span class="pc-cost-v">${[pcost?`포인트 ${fmtWonFull(pcost)}`:'', scost?`발송 ${fmtWonFull(scost)}`:'', gcost?`리워드 ${fmtWonFull(gcost)}`:''].filter(Boolean).join(' · ')}</span></div>`
       : '';
+    // 4차 A/B 비교 블록 (run 에 ab='A'/'B' 있을 때만 — 타사 4차)
+    const abA = p.runs.find(r=>r.ab==='A'), abB = p.runs.find(r=>r.ab==='B');
+    let abHtml = '';
+    if (abA && abB) {
+      const aR = aggDaily(inRange(abA.daily), cfg), bR = aggDaily(inRange(abB.daily), cfg);
+      if (aR.hasData || bR.hasData) {
+        const aAgg = aR.agg, bAgg = bR.agg;
+        const gv = (a,key)=> a[key]||0;
+        const cvrOf = a => gv(a,'inquiry') ? gv(a,'contract')/gv(a,'inquiry') : null;
+        const roasOf = a => { const c=gv(a,'pointCost')+gv(a,'sendCost'); return c ? gv(a,'revenue')/c : null; };
+        const pct = v => v==null?'—':(v*100).toFixed(1)+'%';
+        const aCvr=cvrOf(aAgg), bCvr=cvrOf(bAgg);
+        const lift = (aCvr!=null && bCvr!=null) ? (aCvr-bCvr)*100 : null;
+        const cDelta = gv(aAgg,'contract')-gv(bAgg,'contract');
+        const bars = [['한도조회','inquiry'],['신청','apply'],['약정','contract']].map(([lbl,key])=>{
+          const av=gv(aAgg,key), bv=gv(bAgg,key), mx=Math.max(av,bv,1);
+          return `<div class="ab-row"><span class="ab-rl">${lbl}</span><span class="ab-bg">`
+            + `<span class="ab-b"><i class="ab-f fa" style="width:${(av/mx*100).toFixed(0)}%"></i><b>${comma(av)}</b></span>`
+            + `<span class="ab-b"><i class="ab-f fb" style="width:${(bv/mx*100).toFixed(0)}%"></i><b>${comma(bv)}</b></span>`
+            + `</span></div>`;
+        }).join('');
+        abHtml = `<div class="pc-ab">`
+          + `<div class="pc-ab-head"><span>🧪 4차 A/B 실험</span><span class="ab-leg"><span class="ab-sw fa"></span>A 프로모션<span class="ab-sw fb"></span>B 비프로모션</span></div>`
+          + `<div class="pc-ab-kpis">`
+          + `<div class="abk hero" style="--c:${cfg.color};--cbg:var(${cfg.cvar}-bg)"><div class="abk-l">프로모션 효과 · 조회→약정</div><div class="abk-v">${lift==null?'—':(lift>=0?'+':'')+lift.toFixed(1)+'%p'}</div><div class="abk-s">A ${pct(aCvr)} vs B ${pct(bCvr)}</div></div>`
+          + `<div class="abk"><div class="abk-l">약정자 수</div><div class="abk-v">${comma(gv(aAgg,'contract'))}<span> vs </span>${comma(gv(bAgg,'contract'))}</div><div class="abk-s">${cDelta>=0?'A':'B'} 우세 ${comma(Math.abs(cDelta))}명</div></div>`
+          + `<div class="abk"><div class="abk-l">ROAS</div><div class="abk-v">${pct(roasOf(aAgg))}<span> vs </span>${pct(roasOf(bAgg))}</div><div class="abk-s">비용 반영</div></div>`
+          + `</div><div class="pc-ab-bars">${bars}</div></div>`;
+      }
+    }
     return `<div class="proj-card" data-pid="${p.id}" style="--c:${cfg.color};--cbg:var(${cfg.cvar}-bg)">
       <div class="pc-head"><div class="pc-title">${p.emoji} ${p.name}</div>
         <span class="status-chip ${p.status}">${p.status==='live'?'진행중':'완료'}</span></div>
@@ -788,6 +839,7 @@ function renderDetail(){
       <div class="pc-metrics">${metrics}${cvrM}</div>
       ${costHtml}
       ${runsHtml}
+      ${abHtml}
     </div>`;
   }).join('');
 

@@ -142,7 +142,7 @@ function tasa4Runs() {
       date: d.date, introView: null,
       inquiry: nn(d.limitCheck), apply: nn(d.applyCount),
       contract: nn(d.contract), amount: nn(d.contractAmount), revenue: nn(d.revenue),
-      pointCost: nn(d.pointCost), sendCost: nn(d.sendCost),
+      pointCost: nn(d.pointCost), sendCost: nn(d.sendCost), send: nn(d.send),
     }));
     const label = g === '4차-A' ? '4차 Ⓐ 프로모션' : '4차 Ⓑ 비프로모션';
     const start = gr.length ? gr[0].date : '2026-09-07';
