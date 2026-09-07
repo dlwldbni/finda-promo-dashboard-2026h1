@@ -130,6 +130,27 @@ function couponRun() {
   return { label: '7월', start: dates[0] || '2026-07-14', end: dates[dates.length - 1] || '2026-07-27', granularity: 'daily', daily };
 }
 
+// 타사 4차 A/B 테스트 (9/7~) — data/_tasa4_daily.json (자동갱신이 이 파일만 갱신).
+//   A=프로모션(포인트 지급) / B=비프로모션(대조군). group='4차-A'/'4차-B'. 각 그룹을 별도 run 으로.
+//   데이터 없으면 run 생략(파일 비어있을 때 카드에 안 뜸). 시트 컬럼 매핑은 p6 과 동일.
+function tasa4Runs() {
+  let rows = [];
+  try { rows = JSON.parse(fs.readFileSync(path.join(REPO, 'data', '_tasa4_daily.json'), 'utf8')); } catch (e) { rows = []; }
+  return ['4차-A', '4차-B'].map(g => {
+    const gr = rows.filter(d => d.group === g).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const daily = gr.map(d => ({
+      date: d.date, introView: null,
+      inquiry: nn(d.limitCheck), apply: nn(d.applyCount),
+      contract: nn(d.contract), amount: nn(d.contractAmount), revenue: nn(d.revenue),
+      pointCost: nn(d.pointCost), sendCost: nn(d.sendCost),
+    }));
+    const label = g === '4차-A' ? '4차 Ⓐ 프로모션' : '4차 Ⓑ 비프로모션';
+    const start = gr.length ? gr[0].date : '2026-09-07';
+    const end = gr.length ? gr[gr.length - 1].date : '2026-09-07';
+    return { label, start, end, granularity: 'daily', daily, ab: g === '4차-A' ? 'A' : 'B' };
+  }).filter(r => r.daily.length);
+}
+
 // ---- v2 프로젝트 구성 (사용자 정의 그룹핑) ----
 const projects = [
   { id: 'daegaek', line: 'loan', emoji: '🎯', name: '대고객 한도조회 유도', owner: '지윤', status: 'live',
@@ -137,7 +158,7 @@ const projects = [
   { id: 'sebet', line: 'loan', emoji: '🧧', name: '세뱃돈 프로모션', owner: '지윤', status: 'done',
     runs: [ totalRun(byId.P2, '2월') ] },
   { id: 'tasa', line: 'loan', emoji: '🔥', name: '타사한도조회자 약정', owner: '지윤', status: 'live',
-    runs: p6Runs(byId.P6) },
+    runs: [ ...p6Runs(byId.P6), ...tasa4Runs() ] },
   { id: 'sangsi', line: 'loan', emoji: '💳', name: '대출신청 상시', owner: '지윤', status: 'done',
     runs: [ totalRun(byId.P3, '4월 · 신규유저'), totalRun(byId.P4, '4월 · 타사한도조회') ] },
   // ⚠️ coupon 은 민주님이 data/coupon.json 을 직접 관리한다. external:true → 파일 덮어쓰기 제외.
