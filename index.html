@@ -253,7 +253,7 @@
 </div>
 <script>
 (function(){
-  function decodePw(){ return atob('NjIwMmd1YQ==').split('').reverse().join(''); }
+  function decodePw(){ return atob('NjIwMnBlcw==').split('').reverse().join(''); }
   var gate=document.getElementById('password-gate'), btn=document.getElementById('pwd-submit'), input=document.getElementById('pwd-input'), err=document.getElementById('pwd-error');
   function unlock(){ try{ sessionStorage.setItem('promo_dashboard_unlocked','1'); }catch(e){} if(gate) gate.style.display='none'; document.documentElement.classList.add('unlocked'); document.body.style.overflow='auto'; }
   function check(){ var typed=(input.value||'').trim(); if(typed===decodePw()) unlock(); else { err.classList.add('show'); err.textContent='비밀번호가 일치하지 않습니다'; input.value=''; input.focus(); } }
